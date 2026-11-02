@@ -25,7 +25,8 @@
     "publish": {
       "provider": "github",
       "owner": "ZakariaBinMoti",
-      "repo": "ZBM-Browser"
+      "repo": "ZBM-Browser",
+      "releaseType": "release"
     },
     "win": {
       "target": [
