@@ -1,0 +1,62 @@
+{
+  "name": "zbm-browser",
+  "version": "1.0.0",
+  "description": "ZBM Personal Stealth & High-Performance Browser",
+  "main": "main.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ZakariaBinMoti/ZBM-Browser.git"
+  },
+  "homepage": "https://github.com/ZakariaBinMoti/ZBM-Browser#readme",
+  "bugs": {
+    "url": "https://github.com/ZakariaBinMoti/ZBM-Browser/issues"
+  },
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --win nsis --publish never",
+    "dist:portable": "electron-builder --win portable --publish never",
+    "dist:all": "electron-builder --win nsis portable --publish never",
+    "dist:publish": "electron-builder --win nsis portable --publish always"
+  },
+  "build": {
+    "appId": "com.zbm.browser",
+    "productName": "ZBM Browser",
+    "publish": {
+      "provider": "github",
+      "owner": "ZakariaBinMoti",
+      "repo": "ZBM-Browser"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "ZBM Browser",
+      "uninstallDisplayName": "ZBM Browser",
+      "runAfterFinish": true
+    }
+  },
+  "keywords": [
+    "browser",
+    "stealth",
+    "youtube",
+    "pip",
+    "personal-browser"
+  ],
+  "author": "ZBM",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^45.1.0",
+    "electron-builder": "^26.18.0"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11"
+  }
+}

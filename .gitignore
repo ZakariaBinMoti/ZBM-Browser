@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Production build outputs
+dist/
+out/
+build/
+
+# Temporary logs & debug files
+*.log
+debug.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS metadata
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# Editor directories
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment & local secrets
+.env
+.env.local
+.env.*.local
+
+# Electron user data (local test profiles)
+UserData/
+ZBM-Browser-Data/
+saved-session.json

@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZBM Browser</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="theme-dark theme-cyan">
+  <div id="app-container">
+
+    <!-- ==============================================
+         1. MAIN BROWSER SHELL (Full Browser Mode)
+         ============================================== -->
+    <header id="browser-titlebar">
+      <!-- App Brand & Drag Handle -->
+      <div class="brand-zone" title="ZBM Personal Browser">
+        <div class="brand-logo">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <rect x="3" y="3" width="18" height="18" rx="4"/>
+            <circle cx="12" cy="12" r="5" stroke-dasharray="3 1.5"/>
+            <path d="M12 8v8M8 12h8"/>
+          </svg>
+        </div>
+        <span class="brand-title">ZBM</span>
+      </div>
+
+      <!-- Multi-Tab Bar & New Tab Actions (Grouped tightly together) -->
+      <div class="tabbar-wrapper">
+        <div id="tabs-container" class="tabs-scroll-area">
+          <!-- Tabs are injected dynamically by renderer.js -->
+        </div>
+
+        <!-- New Tab Buttons: Placed directly beside the active/last tab -->
+        <button id="btn-new-tab" class="btn-tab-action" title="New Tab (Ctrl+T)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <button id="btn-new-incognito" class="btn-tab-action btn-incognito-star" title="New Private Tab (Ctrl+Shift+N)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M2 10s3-4 10-4 10 4 10 4"/>
+            <circle cx="7" cy="15" r="3"/>
+            <circle cx="17" cy="15" r="3"/>
+            <path d="M10 15h4"/>
+            <path d="M3 10l3 5M21 10l-3 5"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Draggable titlebar filler: fills the remaining width so user can drag window anywhere here -->
+      <div class="titlebar-drag-spacer"></div>
+
+      <!-- Window Control Buttons (Standard Windows Minimize, Maximize, Close) -->
+      <div class="window-controls">
+        <button id="btn-win-minimize" class="win-btn win-btn-min" title="Minimize" onclick="window.zbmApi?.minimize()">−</button>
+        <button id="btn-win-maximize" class="win-btn win-btn-max" title="Maximize / Restore" onclick="window.zbmApi?.maximize()">🗖</button>
+        <button id="btn-win-close" class="win-btn win-btn-close" title="Close" onclick="window.zbmApi?.close()">✕</button>
+      </div>
+    </header>
+
+    <!-- Navigation & Address Bar (Toolbar) -->
+    <nav id="browser-toolbar">
+      <!-- Back / Forward / Reload / Home -->
+      <div class="nav-controls">
+        <button id="nav-btn-back" class="nav-btn" title="Back (Alt+Left)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <button id="nav-btn-forward" class="nav-btn" title="Forward (Alt+Right)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <button id="nav-btn-reload" class="nav-btn" title="Reload (F5 / Ctrl+R)">
+          <svg id="icon-reload" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          <svg id="icon-stop" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:none;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <button id="nav-btn-home" class="nav-btn" title="Home Page">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </button>
+      </div>
+
+      <!-- Omnibox (Address & Smart Search Bar) -->
+      <div id="omnibox-wrapper" class="omnibox-box">
+        <div class="omnibox-icon" id="omnibox-security-icon" title="Secure Connection">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <input type="text" id="omnibox-input" class="omnibox-input" placeholder="Search Google, enter URL, or 'yt [query]', 'ai [query]', 'wiki [query]'..." spellcheck="false" autocomplete="off">
+        <button id="omnibox-clean-link" class="omnibox-action-btn" title="Copy Clean URL (Strips tracking & UTM parameters)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        </button>
+        <button id="omnibox-star-btn" class="omnibox-action-btn" title="Bookmark This Tab (Ctrl+D)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </button>
+        <button id="omnibox-btn-go" class="omnibox-go" title="Go">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <div id="omnibox-progress" class="omnibox-progress-bar"></div>
+      </div>
+
+      <!-- Action & Utility Tools: Clean, Spacious Topbar with Hamburger Menu -->
+      <div class="toolbar-stealth-group">
+        <!-- STEALTH VIDEO FOCUS BUTTON (Icon only, saves space) -->
+        <button id="btn-toggle-video-mode" class="btn-stealth-icon btn-video-glow" title="Stealth Video Focus: Edge-to-edge video without clutter (Alt+V or F)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </button>
+
+        <!-- Opacity Slider (Icon + Slider + Badge, compact layout) -->
+        <div class="opacity-pill" title="Window Opacity (Alt+Up / Alt+Down)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="opacity-icon">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          <input type="range" id="toolbar-opacity-slider" class="mini-slider" min="12" max="100" value="100" oninput="const v = this.value / 100; window.zbmApi?.setOpacity(v); const valEl = document.getElementById('toolbar-opacity-val'); if(valEl) valEl.textContent = this.value + '%'; const appEl = document.getElementById('app-container'); if(appEl) appEl.style.opacity = v;">
+          <span id="toolbar-opacity-val" class="opacity-val-badge">100%</span>
+        </div>
+
+        <!-- HAMBURGER MENU BUTTON & DROPDOWN -->
+        <div class="hamburger-menu-wrapper">
+          <button id="btn-hamburger-menu" class="btn-stealth-icon btn-hamburger" title="ZBM Browser Tools & Settings (☰)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <line x1="3" y1="12" x2="21" y2="12"/>
+              <line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+          </button>
+
+          <!-- Dropdown Popover Menu (Clean single-line rows, hover tooltips, SVG icons) -->
+          <div id="hamburger-dropdown" class="hamburger-dropdown">
+            <div class="menu-header">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2.2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <span class="menu-title">ZBM Tools & Privacy</span>
+            </div>
+
+            <!-- Stealth & Invisibility Protection -->
+            <div class="menu-section-label">STEALTH & INVISIBILITY</div>
+            <div class="menu-item" id="menu-item-shield" title="Meeting Invisibility Shield: 100% hidden in Zoom, Teams & Screen Share (Alt+S)">
+              <div class="menu-item-left">
+                <span class="menu-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                </span>
+                <span class="menu-name">Meeting Invisibility Shield</span>
+              </div>
+              <span id="menu-badge-shield" class="menu-toggle-badge">OFF</span>
+            </div>
+
+            <div class="menu-item" id="menu-item-pin" title="Always On Top: Keep browser floating above all other windows">
+              <div class="menu-item-left">
+                <span class="menu-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-2l-2-2V5h1V2H6v3h1v8l-2 2v2z"/></svg>
+                </span>
+                <span class="menu-name">Always On Top</span>
+              </div>
+              <span id="menu-badge-pin" class="menu-toggle-badge">OFF</span>
+            </div>
+
+            <div class="menu-item" id="menu-item-ghost" title="Ghost Click-Through: Clicks pass directly to apps underneath (Alt+C)">
+              <div class="menu-item-left">
+                <span class="menu-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="M13 13l6 6"/></svg>
+                </span>
+                <span class="menu-name">Ghost Click-Through</span>
+              </div>
+              <span id="menu-badge-ghost" class="menu-toggle-badge">OFF</span>
+            </div>
+
+            <div class="menu-item" id="menu-item-decoy" title="Camouflage Decoys: Instantly switch to fake ERP, Excel, VS Code screen (Alt+D)">
+              <div class="menu-item-left">
+                <span class="menu-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                </span>
+                <span class="menu-name">Camouflage Decoys</span>
+              </div>
+              <span class="menu-shortcut">Alt+D</span>
+            </div>
+
+            <div class="menu-item menu-item-danger" id="menu-item-panic" title="Boss Panic Key: Instant hide to system tray & mute audio (Alt+X or Esc)">
+              <div class="menu-item-left">
+                <span class="menu-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </span>
+                <span class="menu-name">Boss Panic Key</span>
+              </div>
+              <span class="menu-shortcut">Alt+X</span>
+            </div>
+
+            <!-- Browsing Tools -->
+            <div class="menu-section-label">BROWSING & MULTITASKING</div>
+            <div class="menu-item" id="menu-item-split" title="Split Screen Dual View: View 2 tabs side by side (Alt+2)">
+              <div class="menu-item-left">
+                <span class="menu-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
+                </span>
+                <span class="menu-name">Split Screen Dual View</span>
+              </div>
+              <span id="menu-badge-split" class="menu-toggle-badge">OFF</span>
+            </div>
+
+            <div class="menu-item" id="menu-item-find" title="Find in Page: Search text on current web page (Ctrl+F)">
+              <div class="menu-item-left">
+                <span class="menu-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                </span>
+                <span class="menu-name">Find in Page</span>
+              </div>
+              <span class="menu-shortcut">Ctrl+F</span>
+            </div>
+
+            <div class="menu-item" id="menu-item-eco" title="RAM Eco Saver: Hibernate inactive background tabs to save memory (Alt+E)">
+              <div class="menu-item-left">
+                <span class="menu-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>
+                </span>
+                <span class="menu-name">RAM Eco Saver</span>
+              </div>
+              <span id="menu-badge-eco" class="menu-toggle-badge">OFF</span>
+            </div>
+
+            <div class="menu-item" id="menu-item-reader" title="Distraction-Free Reader Mode: Clean typography layout for articles (Alt+R)">
+              <div class="menu-item-left">
+                <span class="menu-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                </span>
+                <span class="menu-name">Reader Mode</span>
+              </div>
+              <span id="menu-badge-reader" class="menu-toggle-badge">OFF</span>
+            </div>
+
+            <div class="menu-item" id="menu-item-darkmode" title="Universal Dark Mode: Invert bright websites to comfortable dark theme (Alt+Shift+D)">
+              <div class="menu-item-left">
+                <span class="menu-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                </span>
+                <span class="menu-name">Universal Dark Mode</span>
+              </div>
+              <span id="menu-badge-darkmode" class="menu-toggle-badge">OFF</span>
+            </div>
+
+            <div class="menu-item" id="menu-item-adblock" title="Ad & Tracker Shield: Block intrusive ads, trackers and telemetry">
+              <div class="menu-item-left">
+                <span class="menu-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
+                </span>
+                <span class="menu-name">Ad & Tracker Shield</span>
+              </div>
+              <span id="menu-badge-adblock" class="menu-toggle-badge active">ON</span>
+            </div>
+
+            <div class="menu-item" id="menu-item-history" title="Browsing History: View and search recently visited pages (Ctrl+H)">
+              <div class="menu-item-left">
+                <span class="menu-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </span>
+                <span class="menu-name">Browsing History</span>
+              </div>
+              <span class="menu-shortcut">Ctrl+H</span>
+            </div>
+
+            <div class="menu-item" id="menu-item-downloads" title="Downloads: View and manage downloaded files">
+              <div class="menu-item-left">
+                <span class="menu-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </span>
+                <span class="menu-name">Downloads</span>
+              </div>
+              <span id="download-badge" class="badge-dot" style="display:none;"></span>
+            </div>
+
+            <!-- Appearance & Maintenance -->
+            <div class="menu-section-label">APPEARANCE & DATA</div>
+            <div class="menu-theme-row">
+              <div style="display:flex; align-items:center; gap:6px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg>
+                <span class="menu-theme-label">Theme Accent</span>
+              </div>
+              <div class="theme-options-inline">
+                <button class="theme-dot" data-theme="theme-cyan" style="background:#38bdf8;" title="Cyber Cyan"></button>
+                <button class="theme-dot" data-theme="theme-emerald" style="background:#10b981;" title="Emerald"></button>
+                <button class="theme-dot" data-theme="theme-purple" style="background:#a855f7;" title="Violet Glow"></button>
+                <button class="theme-dot" data-theme="theme-amber" style="background:#f59e0b;" title="Sunset Gold"></button>
+                <button class="theme-dot" data-theme="theme-crimson" style="background:#ef4444;" title="Crimson Red"></button>
+              </div>
+            </div>
+
+            <div class="menu-item" id="menu-item-clean" title="Clear Browsing Data: Flush cache, history and cookies (Ctrl+Shift+Del)">
+              <div class="menu-item-left">
+                <span class="menu-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </span>
+                <span class="menu-name">Clear Browsing Data</span>
+              </div>
+              <span class="menu-shortcut">Ctrl+Shift+Del</span>
+            </div>
+
+            <div class="menu-item" id="menu-item-shortcuts" title="Keyboard Shortcuts: View all speed keys and controls">
+              <div class="menu-item-left">
+                <span class="menu-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="6" y1="8" x2="6.01" y2="8"/><line x1="10" y1="8" x2="10.01" y2="8"/><line x1="14" y1="8" x2="14.01" y2="8"/><line x1="18" y1="8" x2="18.01" y2="8"/><line x1="6" y1="12" x2="6.01" y2="12"/><line x1="18" y1="12" x2="18.01" y2="12"/><line x1="8" y1="16" x2="16" y2="16"/></svg>
+                </span>
+                <span class="menu-name">Keyboard Shortcuts</span>
+              </div>
+              <span class="menu-shortcut">Help</span>
+            </div>
+
+            <!-- App Updates & GitHub -->
+            <div class="menu-section-label">UPDATES & ABOUT</div>
+            <div class="menu-item" id="menu-item-update" title="Check for ZBM Browser updates from GitHub Releases">
+              <div class="menu-item-left">
+                <span class="menu-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                </span>
+                <span class="menu-name">Check for Updates</span>
+              </div>
+              <span id="app-version-badge" class="menu-shortcut">v1.0.0</span>
+            </div>
+
+            <div class="menu-item" id="menu-item-github" title="Visit ZBM Browser Official GitHub Repository">
+              <div class="menu-item-left">
+                <span class="menu-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+                </span>
+                <span class="menu-name">GitHub Releases</span>
+              </div>
+              <span class="menu-shortcut">Download</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- FLOATING FIND IN PAGE BAR (Ctrl+F) -->
+    <div id="find-bar" class="find-in-page-bar">
+      <input type="text" id="find-input" placeholder="Find in page..." autocomplete="off">
+      <span id="find-count" class="find-count-badge">0/0</span>
+      <button id="find-prev" class="find-btn" title="Previous match (Shift+Enter)">▲</button>
+      <button id="find-next" class="find-btn" title="Next match (Enter)">▼</button>
+      <button id="find-close" class="find-btn find-close" title="Close (Esc)">✕</button>
+    </div>
+
+    <!-- ZOOM BADGE TOAST -->
+    <div id="zoom-toast" class="zoom-toast">Zoom: 100%</div>
+
+    <!-- Downloads Dropdown Drawer -->
+    <div id="downloads-drawer" class="downloads-drawer">
+      <div class="drawer-header">
+        <span style="font-weight:600; font-size:12px; display:inline-flex; align-items:center; gap:6px;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Downloads
+        </span>
+        <button id="btn-close-downloads" class="btn-icon-tiny">✕</button>
+      </div>
+      <div id="downloads-list" class="downloads-list">
+        <div class="empty-downloads" style="padding:16px; text-align:center; color:#64748b; font-size:11px;">No active downloads</div>
+      </div>
+    </div>
+
+    <!-- History & Bookmarks Drawer -->
+    <div id="history-drawer" class="history-drawer">
+      <div class="drawer-header">
+        <span style="font-weight:600; font-size:12px; display:inline-flex; align-items:center; gap:6px;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Browsing History
+        </span>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <button id="btn-clear-history-prompt" class="btn-clean-data" title="Clear Browsing Data (Ctrl+Shift+Del)">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:3px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            Clear
+          </button>
+          <button id="btn-close-history" class="btn-icon-tiny">✕</button>
+        </div>
+      </div>
+      <div class="history-search-box">
+        <input type="text" id="history-search-input" placeholder="Search history..." autocomplete="off">
+      </div>
+      <div id="history-list" class="history-list">
+        <div class="empty-history" style="padding:16px; text-align:center; color:#64748b; font-size:11px;">No history recorded yet</div>
+      </div>
+    </div>
+
+    <!-- Clear Browsing Data Dialog Modal -->
+    <div id="clean-data-modal" class="clean-data-modal">
+      <div class="clean-modal-content">
+        <div class="clean-modal-header">
+          <span style="font-weight:700; font-size:13px; color:#f8fafc; display:inline-flex; align-items:center; gap:6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            Clear Browsing Data & Privacy Cache
+          </span>
+          <button id="btn-close-clean-modal" class="btn-icon-tiny">✕</button>
+        </div>
+        <p style="font-size:11px; color:#94a3b8; margin: 12px 0 16px 0;">Select the data to permanently erase from ZBM Browser:</p>
+        <div class="clean-options">
+          <label class="clean-opt-label"><input type="checkbox" id="clean-chk-cache" checked> Web Cache & Media Files</label>
+          <label class="clean-opt-label"><input type="checkbox" id="clean-chk-history" checked> Browsing History Entries</label>
+          <label class="clean-opt-label"><input type="checkbox" id="clean-chk-cookies"> Cookies & Active Logins (Will sign you out)</label>
+        </div>
+        <div class="clean-modal-actions">
+          <button id="btn-cancel-clean" class="btn-modal-cancel">Cancel</button>
+          <button id="btn-confirm-clean" class="btn-modal-danger">Purge Selected Data</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Global Floating Toast Notification Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Quick Bookmarks Bar -->
+    <div id="bookmarks-bar">
+      <div class="bookmark-item" data-url="https://www.google.com">
+        <span class="bm-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span> Google
+      </div>
+      <div class="bookmark-item" data-url="https://www.youtube.com">
+        <span class="bm-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></span> YouTube
+      </div>
+      <div class="bookmark-item" data-url="https://chatgpt.com">
+        <span class="bm-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span> ChatGPT
+      </div>
+      <div class="bookmark-item" data-url="https://github.com">
+        <span class="bm-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg></span> GitHub
+      </div>
+      <div class="bookmark-item" data-url="https://www.reddit.com">
+        <span class="bm-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/></svg></span> Reddit
+      </div>
+      <div class="bookmark-item" data-url="https://www.facebook.com">
+        <span class="bm-icon" style="font-weight:700; font-size:11px;">f</span> Facebook
+      </div>
+      <div class="bookmark-item" data-url="https://x.com">
+        <span class="bm-icon" style="font-weight:700; font-size:11px;">𝕏</span> Twitter / X
+      </div>
+      <div class="bookmark-item" data-url="https://news.google.com">
+        <span class="bm-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></svg></span> News
+      </div>
+    </div>
+
+    <!-- Webviews Stage (Where webpages render) -->
+    <main id="webviews-stage">
+      <!-- Global Update Notification Banner (Auto-Update from GitHub Releases) -->
+      <div id="update-notification-banner" class="update-notification-banner" style="display:none;">
+        <div class="update-banner-content">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+          <span id="update-banner-text">A new update for ZBM Browser is ready!</span>
+        </div>
+        <div class="update-banner-actions">
+          <button id="btn-update-action" class="btn-update-action">Restart to Update</button>
+          <button id="btn-update-dismiss" class="btn-update-dismiss" title="Dismiss">✕</button>
+        </div>
+      </div>
+
+      <div id="webviews-container">
+        <!-- Active webviews inserted here (single or split-view) -->
+      </div>
+
+      <!-- New Tab Dashboard (shown when on blank page or new tab) -->
+      <div id="new-tab-dashboard" class="new-tab-screen">
+        <div class="dashboard-content">
+          <div class="dashboard-clock" id="dashboard-clock">12:00:00</div>
+          <div class="dashboard-date" id="dashboard-date">Sunday, November 1, 2026</div>
+
+          <div class="dashboard-search-box">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input type="text" id="dashboard-search-input" placeholder="Search Google, or try 'yt lofi', 'ai python script', 'wiki quantum'..." autofocus>
+            <button id="dashboard-btn-search">Search</button>
+          </div>
+
+          <div class="speed-dial-grid">
+            <div class="speed-dial-card" data-url="https://www.youtube.com">
+              <div class="card-icon" style="background:#dc2626;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              </div>
+              <div class="card-title">YouTube</div>
+            </div>
+            <div class="speed-dial-card" data-url="https://www.google.com">
+              <div class="card-icon" style="background:#2563eb;">G</div>
+              <div class="card-title">Google</div>
+            </div>
+            <div class="speed-dial-card" data-url="https://chatgpt.com">
+              <div class="card-icon" style="background:#059669;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </div>
+              <div class="card-title">ChatGPT</div>
+            </div>
+            <div class="speed-dial-card" data-url="https://github.com">
+              <div class="card-icon" style="background:#1e293b;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+              </div>
+              <div class="card-title">GitHub</div>
+            </div>
+            <div class="speed-dial-card" data-url="https://www.reddit.com">
+              <div class="card-icon" style="background:#ea580c;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+              </div>
+              <div class="card-title">Reddit</div>
+            </div>
+            <div class="speed-dial-card" data-url="https://www.facebook.com">
+              <div class="card-icon" style="background:#1d4ed8; font-weight:700;">f</div>
+              <div class="card-title">Facebook</div>
+            </div>
+            <div class="speed-dial-card" data-url="https://x.com">
+              <div class="card-icon" style="background:#090d16; font-weight:700;">𝕏</div>
+              <div class="card-title">Twitter</div>
+            </div>
+            <div class="speed-dial-card" data-url="https://www.netflix.com">
+              <div class="card-icon" style="background:#e50914; font-weight:700;">N</div>
+              <div class="card-title">Netflix</div>
+            </div>
+          </div>
+
+          <div class="dashboard-tip">
+            <span style="color:var(--accent-cyan); font-weight:700;">TIP:</span> <code>Alt+2</code> Split Screen, <code>Ctrl+F</code> Find, <code>Ctrl+Shift+S</code> Video Snap, <code>Alt+S</code> Meeting Shield
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ==============================================
+         2. FLOATING STEALTH VIDEO HUD (Appears in Video Mode)
+         ============================================== -->
+    <!-- Top Floating HUD -->
+    <!-- Top Floating HUD (Responsive, Clean, Never overflows) -->
+    <div id="video-hud-top" class="floating-hud-bar top-hud">
+      <div class="hud-left">
+        <div class="stealth-drag-handle" title="Click & drag to move window anywhere">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/></svg>
+          <span>ZBM</span>
+        </div>
+
+        <!-- Exit back to Full Browser -->
+        <button id="btn-exit-video-mode" class="hud-btn btn-exit-browser" title="Exit to Full Browser Mode (Alt+V or Esc)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+          <span style="margin-left:4px;">Browser</span>
+        </button>
+
+        <!-- Meeting Shield in HUD -->
+        <button id="btn-video-shield" class="hud-btn" title="Meeting Invisibility Shield (Screen-Share Proof) (Alt+S)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </button>
+
+        <!-- 1-Click Video Frame Snapshot -->
+        <button id="btn-video-snapshot" class="hud-btn" title="Capture HD Video Frame to Clipboard (Ctrl+Shift+S)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </button>
+
+        <!-- Native Picture-in-Picture Popout -->
+        <button id="btn-video-pip" class="hud-btn" title="Pop out into Picture-in-Picture Floating Window (Alt+P)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><rect x="12" y="9" width="8" height="6" rx="1"/></svg>
+        </button>
+
+        <!-- Compact Opacity Slider in HUD -->
+        <div class="opacity-pill" title="Window Opacity (Alt+Up / Alt+Down)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="opacity-icon"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          <input type="range" id="video-opacity-slider" class="mini-slider" min="12" max="100" value="100">
+          <span id="video-opacity-val" class="opacity-val-badge">100%</span>
+        </div>
+      </div>
+
+      <div class="hud-right">
+        <!-- Secondary Tools Group (Gracefully hides on smaller widths) -->
+        <div class="hud-secondary-tools">
+          <div class="boost-widget" title="Audio Booster: Amplify volume up to 300% (B)">
+            <button id="btn-boost-step" class="btn-boost-badge">100%</button>
+          </div>
+
+          <button id="btn-size-mini" class="hud-btn" title="Mini PIP (320x180)">Mini</button>
+          <button id="btn-size-med" class="hud-btn" title="Medium PIP (480x270)">Med</button>
+          <button id="btn-size-wide" class="hud-btn" title="Wide PIP (640x360)">Wide</button>
+          <button id="btn-size-hd" class="hud-btn" title="HD Preset (960x540)">HD</button>
+
+          <!-- Ghost Click-Through -->
+          <button id="btn-video-ghost" class="hud-btn" title="Ghost Click-Through: Clicks pass directly to apps behind (Alt+C)">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="M13 13l6 6"/></svg>
+          </button>
+
+          <!-- Always-On-Top Pin -->
+          <button id="btn-video-pin" class="hud-btn" title="Always on Top (Pin)">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-2l-2-2V5h1V2H6v3h1v8l-2 2v2z"/></svg>
+          </button>
+
+          <!-- Camouflage Decoys -->
+          <button id="btn-video-decoy" class="hud-btn" title="Camouflage Decoys (Alt+D)">
+            <span style="font-size:10px; font-weight:700;">DECOY</span>
+          </button>
+
+          <!-- Boss Panic Key Button -->
+          <button id="btn-video-panic" class="hud-btn btn-panic-danger" title="Boss Panic: Instant Mute & Hide (Alt+X or Esc)">
+            <span style="font-size:10px; font-weight:700;">PANIC</span>
+          </button>
+        </div>
+
+        <!-- PINNED WINDOW CONTROLS: ALWAYS VISIBLE, NEVER PUSHED OFF-SCREEN -->
+        <div class="hud-window-controls">
+          <button id="btn-video-fs" class="hud-btn" title="Toggle Fullscreen (F11)" onclick="window.zbmApi?.toggleFullscreen()">⛶</button>
+          <button id="btn-video-minimize" class="hud-btn" title="Minimize" onclick="window.zbmApi?.minimize()">−</button>
+          <button id="btn-video-close" class="hud-btn btn-close-danger" title="Close" onclick="window.zbmApi?.close()">✕</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Floating HUD (Playback Controls) -->
+    <div id="video-hud-bottom" class="floating-hud-bar bottom-hud">
+      <div class="playback-controls">
+        <button id="btn-play-pause" class="playback-btn" title="Play / Pause (Space)">
+          <svg id="icon-play" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <svg id="icon-pause" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+        </button>
+        <button id="btn-rewind" class="playback-btn" title="Rewind 10s (Left Arrow)">-10s</button>
+        <button id="btn-forward" class="playback-btn" title="Forward 10s (Right Arrow)">+10s</button>
+      </div>
+
+      <div class="timeline-box">
+        <span id="time-current" class="time-label">0:00</span>
+        <input type="range" id="timeline-slider" class="timeline-slider" min="0" max="100" value="0">
+        <span id="time-duration" class="time-label">0:00</span>
+      </div>
+
+      <div class="playback-controls">
+        <button id="btn-mute" class="playback-btn" title="Mute / Unmute (M)">
+          <svg id="icon-vol" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+          <svg id="icon-mute" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+        </button>
+
+        <button id="btn-speed" class="playback-btn" title="Playback Speed (Click or press >/<)">1x</button>
+        <button id="btn-audio-only" class="playback-btn" title="Covert Radio Mode (Audio only, black screen)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <button id="btn-shortcuts" class="playback-btn" title="Shortcuts Cheat Sheet (?)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="6" y1="8" x2="6.01" y2="8"/><line x1="10" y1="8" x2="10.01" y2="8"/><line x1="14" y1="8" x2="14.01" y2="8"/><line x1="18" y1="8" x2="18.01" y2="8"/><line x1="6" y1="12" x2="6.01" y2="12"/><line x1="18" y1="12" x2="18.01" y2="12"/><line x1="8" y1="16" x2="16" y2="16"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ==============================================
+         3. OVERLAYS, DECOYS & NOTICES
+         ============================================== -->
+    <!-- Ghost Mode Notice -->
+    <div id="ghost-notice">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="M13 13l6 6"/></svg>
+        <span>Ghost Click-Through Active: Clicks pass to windows behind. Press <b>Alt + C</b> to regain control.</span>
+      </div>
+    </div>
+
+    <!-- Meeting Invisibility Shield Notice -->
+    <div id="shield-notice">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span>Meeting Shield Active: Window is 100% INVISIBLE in Zoom, Teams, Meet & Screen Recording!</span>
+      </div>
+    </div>
+
+    <!-- Covert Audio-Only / Clock Screen -->
+    <div id="audio-only-screen">
+      <div class="mini-clock" id="clock-display">12:00:00</div>
+      <div class="mini-status">● Background Data Synchronizer (Active)</div>
+      <div style="font-size: 10px; color: #475569; margin-top: 10px;">Press <b>A</b> or click anywhere to exit Covert Mode</div>
+    </div>
+
+    <!-- MULTI-DECOY CAMOUFLAGE SUITE (Alt+D) -->
+    <div id="decoy-container" class="decoy-overlay">
+      <div class="decoy-topbar">
+        <div class="decoy-selector-tabs">
+          <button class="decoy-tab active" data-decoy="erp">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+            <span>Betopia ERP</span>
+          </button>
+          <button class="decoy-tab" data-decoy="excel">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+            <span>MS Excel Budget</span>
+          </button>
+          <button class="decoy-tab" data-decoy="vscode">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            <span>VS Code Cloud</span>
+          </button>
+          <button class="decoy-tab" data-decoy="teams">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span>Teams Chat</span>
+          </button>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:10px; color:#94a3b8;">Press <b>Alt+D</b> or <b>Esc</b> to return</span>
+          <button id="btn-exit-decoy" class="btn-exit-decoy">✕ Close Decoy</button>
+        </div>
+      </div>
+
+      <!-- DECOY 1: BETOPIA ERP -->
+      <div id="decoy-view-erp" class="decoy-view active">
+        <div class="erp-subbar">
+          <span style="background:#7c3aed; padding:2px 6px; border-radius:3px; color:#fff; font-weight:700; font-size:10px;">ERP</span>
+          <span style="font-weight:600; font-size:11px;">Betopia ERP - Sales Orders & Revenue</span>
+          <span style="margin-left:auto; color:#94a3b8; font-size:10px;">SM Technology IT Limited | Server Online</span>
+        </div>
+        <div class="erp-searchbar">
+          <span class="erp-badge">Order: FO023364B1A02</span>
+          <input type="text" value="Filter records..." style="background:transparent; border:none; color:#64748b; font-size:10px;" readonly>
+          <div style="margin-left:auto; display:flex; gap:6px; font-size:9px; color:#64748b;">
+            <span>Items 1-3 of 3</span>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="erp-table">
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Status</th>
+                <th>Order Date</th>
+                <th>Client</th>
+                <th>Delivery Date</th>
+                <th>Team Lead</th>
+                <th>Project Scope</th>
+                <th>Total Value</th>
+                <th>Billing</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><b>5220345</b></td>
+                <td><span class="erp-status-wip">WIP</span></td>
+                <td>Nov 01, 09:40 AM</td>
+                <td>geenarh12</td>
+                <td>Nov 15, 05:00 PM</td>
+                <td>Md. Maher</td>
+                <td>Shopify Enterprise Architecture</td>
+                <td><b>$1,850.00</b></td>
+                <td><span class="erp-status-sales">Paid</span></td>
+              </tr>
+              <tr>
+                <td>5220346</td>
+                <td><span class="erp-status-review">Review</span></td>
+                <td>Oct 29, 02:15 PM</td>
+                <td>t_johnson</td>
+                <td>Nov 08, 04:00 PM</td>
+                <td>Tanvir H.</td>
+                <td>API Integration & Cloud Migration</td>
+                <td>$3,200.00</td>
+                <td><span class="erp-status-sales">Verified</span></td>
+              </tr>
+              <tr>
+                <td>5220347</td>
+                <td><span class="erp-status-completed">Completed</span></td>
+                <td>Oct 25, 11:30 AM</td>
+                <td>apex_agency</td>
+                <td>Nov 01, 12:00 PM</td>
+                <td>Rashed K.</td>
+                <td>Database Optimization & Indexing</td>
+                <td>$950.00</td>
+                <td><span class="erp-status-sales">Settled</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- DECOY 2: MICROSOFT EXCEL -->
+      <div id="decoy-view-excel" class="decoy-view">
+        <div class="excel-ribbon">
+          <div class="excel-ribbon-tabs">
+            <span class="excel-tab active">Home</span>
+            <span class="excel-tab">Insert</span>
+            <span class="excel-tab">Page Layout</span>
+            <span class="excel-tab">Formulas</span>
+            <span class="excel-tab">Data</span>
+            <span class="excel-tab">View</span>
+          </div>
+          <div class="excel-formula-bar">
+            <span class="excel-name-box">C8</span>
+            <span class="excel-fx">fx</span>
+            <input type="text" class="excel-formula-input" value="=SUM(C3:C7)*1.12" readonly>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="excel-sheet-table">
+            <thead>
+              <tr>
+                <th class="col-head"></th>
+                <th class="col-head">A</th>
+                <th class="col-head">B</th>
+                <th class="col-head">C</th>
+                <th class="col-head">D</th>
+                <th class="col-head">E</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td class="row-head">1</td><td><b>Cost Center</b></td><td><b>Department</b></td><td><b>Q3 Actual</b></td><td><b>Q4 Projected</b></td><td><b>Variance %</b></td></tr>
+              <tr><td class="row-head">2</td><td>CC-101</td><td>Infrastructure</td><td>$42,500.00</td><td>$45,200.00</td><td>+6.3%</td></tr>
+              <tr><td class="row-head">3</td><td>CC-102</td><td>Software Licensing</td><td>$18,400.00</td><td>$19,000.00</td><td>+3.2%</td></tr>
+              <tr><td class="row-head">4</td><td>CC-103</td><td>DevOps & Cloud</td><td>$34,150.00</td><td>$36,000.00</td><td>+5.4%</td></tr>
+              <tr><td class="row-head">5</td><td>CC-104</td><td>Quality Assurance</td><td>$12,800.00</td><td>$13,500.00</td><td>+5.5%</td></tr>
+              <tr><td class="row-head">6</td><td>CC-105</td><td>IT Security & Audit</td><td>$22,600.00</td><td>$24,000.00</td><td>+6.2%</td></tr>
+              <tr class="excel-total-row"><td class="row-head">7</td><td><b>TOTAL</b></td><td><b>EBITDA Buffer</b></td><td><b>$130,450.00</b></td><td><b>$137,700.00</b></td><td><b>+5.5%</b></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- DECOY 3: VS CODE CLOUD EDITOR -->
+      <div id="decoy-view-vscode" class="decoy-view">
+        <div class="vscode-body">
+          <div class="vscode-sidebar">
+            <div style="font-size:9px; font-weight:700; color:#858585; margin-bottom:8px;">EXPLORER: CLOUD-API</div>
+            <div class="vscode-file active"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>auth-service.ts</div>
+            <div class="vscode-file"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>database.pool.ts</div>
+            <div class="vscode-file"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>metrics.worker.ts</div>
+            <div class="vscode-file"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>docker-compose.yml</div>
+          </div>
+          <div class="vscode-editor">
+            <div class="vscode-tabs">
+              <span class="vscode-editor-tab active">auth-service.ts</span>
+            </div>
+            <div class="vscode-code">
+<span class="kw">import</span> { Injectable, Logger } <span class="kw">from</span> <span class="str">'@nestjs/common'</span>;
+<span class="kw">import</span> { RedisService } <span class="kw">from</span> <span class="str">'./redis.provider'</span>;
+
+@Injectable()
+<span class="kw">export class</span> <span class="cls">TokenValidationService</span> {
+  <span class="kw">private readonly</span> logger = <span class="kw">new</span> <span class="cls">Logger</span>(TokenValidationService.name);
+
+  <span class="kw">async</span> validateSession(sessionId: <span class="cls">string</span>): <span class="cls">Promise</span>&lt;<span class="cls">boolean</span>&gt; {
+    <span class="kw">const</span> cached = <span class="kw">await</span> <span class="kw">this</span>.redis.get(`session:${sessionId}`);
+    <span class="kw">if</span> (!cached) {
+      <span class="kw">this</span>.logger.warn(`Session cache miss for id: ${sessionId}`);
+      <span class="kw">return false</span>;
+    }
+    <span class="kw">return</span> JSON.parse(cached).active === <span class="kw">true</span>;
+  }
+}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DECOY 4: TEAMS / SLACK CHAT -->
+      <div id="decoy-view-teams" class="decoy-view">
+        <div class="teams-body">
+          <div class="teams-channels">
+            <div style="font-weight:700; color:#cbd5e1; font-size:10px; margin-bottom:6px;">CHANNELS</div>
+            <div class="teams-chan active"># general-engineering</div>
+            <div class="teams-chan"># cloud-deployments</div>
+            <div class="teams-chan"># system-alerts</div>
+          </div>
+          <div class="teams-chat">
+            <div class="teams-msg">
+              <span class="teams-author">Tanvir H. (Lead Architect)</span> <span class="teams-time">10:14 AM</span>
+              <div class="teams-text">PostgreSQL 16 replica cluster migration completed with zero downtime. Metrics are healthy.</div>
+            </div>
+            <div class="teams-msg">
+              <span class="teams-author">Rashed K. (DevOps)</span> <span class="teams-time">10:18 AM</span>
+              <div class="teams-text">Confirmed. CPU load on db-primary-01 stabilized under 22%. Ready for the Q4 load testing.</div>
+            </div>
+            <div class="teams-msg">
+              <span class="teams-author">You</span> <span class="teams-time">10:21 AM</span>
+              <div class="teams-text">Understood. Reviewing the transaction pool logs now.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Shortcuts Cheat Sheet Modal -->
+    <div id="shortcuts-modal">
+      <div class="modal-header">
+        <div class="modal-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="6" y1="8" x2="6.01" y2="8"/><line x1="10" y1="8" x2="10.01" y2="8"/><line x1="14" y1="8" x2="14.01" y2="8"/><line x1="18" y1="8" x2="18.01" y2="8"/><line x1="6" y1="12" x2="6.01" y2="12"/><line x1="18" y1="12" x2="18.01" y2="12"/><line x1="8" y1="16" x2="16" y2="16"/></svg>
+          <span style="margin-left:6px;">ZBM Browser Shortcuts</span>
+        </div>
+        <button id="btn-close-modal" class="hud-btn">✕</button>
+      </div>
+
+      <div class="shortcut-row">
+        <span>Stealth Video Focus (Edge-to-edge video)</span>
+        <span class="key-badge">Alt + V / F</span>
+      </div>
+      <div class="shortcut-row">
+        <span>Split Screen Dual View (2 tabs side-by-side)</span>
+        <span class="key-badge">Alt + 2</span>
+      </div>
+      <div class="shortcut-row">
+        <span>Find in Page</span>
+        <span class="key-badge">Ctrl + F</span>
+      </div>
+      <div class="shortcut-row">
+        <span>Capture Crisp Video Frame Screenshot</span>
+        <span class="key-badge">Ctrl + Shift + S</span>
+      </div>
+      <div class="shortcut-row">
+        <span>Page Zoom In / Out / Reset</span>
+        <span class="key-badge">Ctrl + + / Ctrl + - / Ctrl + 0</span>
+      </div>
+      <div class="shortcut-row">
+        <span>Meeting Invisibility Shield (Zoom/Teams Screen-share proof)</span>
+        <span class="key-badge">Alt + S</span>
+      </div>
+      <div class="shortcut-row">
+        <span>Instant Panic Boss Key (Hide & Mute)</span>
+        <span class="key-badge">Alt + X / Esc</span>
+      </div>
+      <div class="shortcut-row">
+        <span>Camouflage Decoys (ERP, Excel, VS Code, Teams)</span>
+        <span class="key-badge">Alt + D / F2</span>
+      </div>
+      <div class="shortcut-row">
+        <span>Ghost Mode (Click-Through to background)</span>
+        <span class="key-badge">Alt + C</span>
+      </div>
+      <div class="shortcut-row">
+        <span>Universal Dark Mode Toggle</span>
+        <span class="key-badge">Alt + Shift + D</span>
+      </div>
+      <div class="shortcut-row">
+        <span>Toggle Fullscreen</span>
+        <span class="key-badge">F11</span>
+      </div>
+      <div class="shortcut-row">
+        <span>New Tab / New Incognito Tab</span>
+        <span class="key-badge">Ctrl + T / Ctrl + Shift + N</span>
+      </div>
+      <div class="shortcut-row">
+        <span>Close Current Tab</span>
+        <span class="key-badge">Ctrl + W</span>
+      </div>
+      <div class="shortcut-row">
+        <span>Focus Address Bar</span>
+        <span class="key-badge">Ctrl + L</span>
+      </div>
+      <div class="shortcut-row">
+        <span>Speed Control (Faster / Slower)</span>
+        <span class="key-badge">&gt; / &lt;</span>
+      </div>
+      <div class="shortcut-row">
+        <span>Mute / Unmute Audio</span>
+        <span class="key-badge">Alt + M / M</span>
+      </div>
+      <div class="shortcut-row">
+        <span>Bookmark Current Tab</span>
+        <span class="key-badge">Ctrl + D</span>
+      </div>
+      <div class="shortcut-row">
+        <span>Browsing History Drawer</span>
+        <span class="key-badge">Ctrl + H</span>
+      </div>
+      <div class="shortcut-row">
+        <span>RAM Eco Saver (Sleep Background Tabs)</span>
+        <span class="key-badge">Alt + E</span>
+      </div>
+      <div class="shortcut-row">
+        <span>Distraction-Free Reader Mode</span>
+        <span class="key-badge">Alt + R</span>
+      </div>
+      <div class="shortcut-row">
+        <span>Native Picture-in-Picture Popout</span>
+        <span class="key-badge">Alt + P</span>
+      </div>
+      <div class="shortcut-row">
+        <span>Clear Browsing Data & Cache</span>
+        <span class="key-badge">Ctrl + Shift + Del</span>
+      </div>
+      <div class="shortcut-row">
+        <span>Play / Pause Video</span>
+        <span class="key-badge">Space</span>
+      </div>
+
+      <div style="margin-top:14px; font-size:10px; color:#94a3b8; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px; display:flex; align-items:flex-start; gap:6px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2" style="flex-shrink:0; margin-top:1px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <span><b>Pro Tips:</b> Press <b>Alt+2</b> for Split Screen side-by-side browsing! Press <b>Ctrl+Shift+S</b> to instantly save crystal-clear video frames without UI clutter!</span>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
