@@ -1,6 +1,6 @@
 {
   "name": "zbm-browser",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "ZBM Personal Stealth & High-Performance Browser",
   "main": "main.js",
   "repository": {

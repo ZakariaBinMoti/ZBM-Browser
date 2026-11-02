@@ -322,7 +322,7 @@ const AD_SKIP_SCRIPT = `
 // ==========================================
 // 3. MULTI-TAB ARCHITECTURE & PERSISTENCE
 // ==========================================
-function createTab(initialUrl = 'https://www.youtube.com', activate = true, isIncognito = false) {
+function createTab(initialUrl = 'about:blank', activate = true, isIncognito = false) {
   tabCounter++;
   const tabId = 'tab-' + tabCounter;
 
@@ -347,12 +347,13 @@ function createTab(initialUrl = 'https://www.youtube.com', activate = true, isIn
   }
 
   webview.setAttribute('webpreferences', 'contextIsolation=false');
-  webview.src = initialUrl;
+  webview.src = initialUrl || 'about:blank';
 
+  const isBlank = !initialUrl || initialUrl === 'about:blank';
   const tabData = {
     id: tabId,
-    url: initialUrl,
-    title: isIncognito ? 'Private Tab' : (initialUrl.includes('youtube.com') ? 'YouTube' : 'New Tab'),
+    url: initialUrl || 'about:blank',
+    title: isIncognito ? 'Private Tab' : (isBlank ? 'New Tab' : (initialUrl.includes('youtube.com') ? 'YouTube' : 'New Tab')),
     favicon: null,
     isLoading: false,
     webviewEl: webview,
@@ -406,7 +407,7 @@ function closeTab(tabId) {
   }
 
   if (tabs.length === 0) {
-    createTab('https://www.youtube.com', true);
+    createTab('about:blank', true);
     return;
   }
 
@@ -697,8 +698,16 @@ function saveSessionDebounced() {
 // 4. SMART OMNIBOX & SEARCH ENGINE
 // ==========================================
 function normalizeUrl(input) {
+  if (!input) return 'about:blank';
   let query = input.trim();
-  if (!query) return 'about:blank';
+  if (!query || query === 'about:blank' || query === 'about:newtab' || query === 'zbm://newtab') {
+    return 'about:blank';
+  }
+
+  // Direct Protocol (including about:, chrome:, data:, file:)
+  if (/^(https?|about|chrome|data|file):/i.test(query)) {
+    return query;
+  }
 
   // Smart Prefixes
   if (query.startsWith('yt ')) {
@@ -722,11 +731,6 @@ function normalizeUrl(input) {
     return `https://www.reddit.com/search/?q=${encodeURIComponent(sub)}`;
   }
 
-  // Direct Protocol
-  if (/^https?:\/\//i.test(query)) {
-    return query;
-  }
-
   // Domain regex
   const isDomain = /^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/.*)?$/i.test(query) || /^localhost(:[0-9]+)?(\/.*)?$/i.test(query);
   if (isDomain) {
@@ -747,12 +751,17 @@ function navigateActiveTab(targetUrl) {
   if (url === 'about:blank') {
     newTabDashboard.classList.add('active');
     tab.webviewEl.loadURL('about:blank');
+    tab.title = tab.isIncognito ? 'Private Tab' : 'New Tab';
+    tab.favicon = null;
+    renderTabsUI();
   } else {
     newTabDashboard.classList.remove('active');
     tab.webviewEl.loadURL(url);
   }
 
   omniboxInput.value = url === 'about:blank' ? '' : url;
+  updateBookmarkStarUI();
+  updateNavButtonsState();
 }
 
 // ==========================================
@@ -2223,16 +2232,19 @@ async function initAsync() {
     }
   }
 
-  // Session Restore: Restore saved tabs or open YouTube default
+  // Session Restore: Restore saved tabs or open Home Screen default
   let restored = false;
   if (window.zbmApi && window.zbmApi.loadSession) {
     try {
       const saved = await window.zbmApi.loadSession();
       if (saved && saved.tabs && saved.tabs.length > 0) {
-        saved.tabs.forEach((t, i) => {
-          createTab(t.url || 'https://www.youtube.com', i === 0);
-        });
-        restored = true;
+        const validTabs = saved.tabs.filter(t => t.url && !t.url.includes('google.com/search?q=about%3Ablank'));
+        if (validTabs.length > 0) {
+          validTabs.forEach((t, i) => {
+            createTab(t.url || 'about:blank', i === 0);
+          });
+          restored = true;
+        }
       }
     } catch (e) {
       console.warn('Session load error:', e);
@@ -2302,7 +2314,7 @@ async function initAsync() {
   }
 
   if (!restored && tabs.length === 0) {
-    createTab('https://www.youtube.com', true);
+    createTab('about:blank', true);
   }
 }
 
