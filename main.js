@@ -37,13 +37,16 @@ try {
 // Session state file for auto-restore
 const sessionFilePath = path.join(customUserData, 'saved-session.json');
 
-// Genuine Desktop Google Chrome 131 User Agent
-// Seamless Google sign-in compatibility, native 4K/60fps YouTube MSE streaming, zero playback stops
+// Genuine Desktop Google Chrome 131 & Firefox 133 User Agents
+// Chrome 131: Native 4K/60fps YouTube MSE streaming, zero playback stops, hardware acceleration
+// Firefox 133: Seamless Google sign-in compatibility on accounts.google.com (bypasses 'disallowed_useragent')
 const DESKTOP_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+const GOOGLE_AUTH_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0';
 app.userAgentFallback = DESKTOP_USER_AGENT;
 
 // Media & Hardware Performance switches
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');
 app.commandLine.appendSwitch('disable-features', 'HardwareMediaKeyHandling,WebAuthentication,WebAuthenticationConditionalUI');
 app.commandLine.appendSwitch('enable-gpu-rasterization');
 app.commandLine.appendSwitch('enable-zero-copy');
@@ -87,17 +90,60 @@ function createDiscreetIcon() {
   }
 }
 
+function isGoogleAuthUrl(url) {
+  if (!url || typeof url !== 'string') return false;
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    if (
+      host === 'accounts.google.com' ||
+      host.endsWith('.accounts.google.com') ||
+      host === 'accounts.youtube.com' ||
+      host === 'oauth2.googleapis.com' ||
+      host === 'myaccount.google.com'
+    ) {
+      return true;
+    }
+    if (host.startsWith('accounts.google.')) {
+      return true;
+    }
+    return false;
+  } catch (e) {
+    return url.includes('accounts.google.com') || url.includes('accounts.youtube.com');
+  }
+}
+
 function configureSession(targetSession) {
-  // Set User-Agent at C++ layer for wire-speed performance (zero JS interceptor lag)
+  // Set default Desktop Chrome User-Agent at C++ layer
   targetSession.setUserAgent(DESKTOP_USER_AGENT);
 
-  // Fast header filter: Only modify if X-Requested-With header exists
+  // Dynamic header filter: Google Authentication vs Genuine Desktop Browsing
   targetSession.webRequest.onBeforeSendHeaders((details, callback) => {
-    if (details.requestHeaders && details.requestHeaders['X-Requested-With']) {
-      delete details.requestHeaders['X-Requested-With'];
-      return callback({ cancel: false, requestHeaders: details.requestHeaders });
+    const url = details.url || '';
+    const referrer = details.referrer || '';
+    const headers = details.requestHeaders || {};
+
+    const isGoogleAuth = isGoogleAuthUrl(url) || isGoogleAuthUrl(referrer);
+
+    if (isGoogleAuth) {
+      headers['User-Agent'] = GOOGLE_AUTH_USER_AGENT;
+      // Strip Chromium Client Hints to mirror genuine Firefox behavior on Google auth
+      for (const key of Object.keys(headers)) {
+        const lower = key.toLowerCase();
+        if (lower.startsWith('sec-ch-ua') || lower === 'x-requested-with') {
+          delete headers[key];
+        }
+      }
+    } else {
+      headers['User-Agent'] = DESKTOP_USER_AGENT;
+      for (const key of Object.keys(headers)) {
+        if (key.toLowerCase() === 'x-requested-with') {
+          delete headers[key];
+        }
+      }
     }
-    callback({ cancel: false });
+
+    callback({ cancel: false, requestHeaders: headers });
   });
 
   // Fast-path AdBlocker: Never block YouTube streams or video chunks (prevents 'Something went wrong')
@@ -576,6 +622,15 @@ ipcMain.on('resize-preset', (event, { width, height }) => {
 
 app.on('web-contents-created', (event, contents) => {
   contents.setUserAgent(DESKTOP_USER_AGENT);
+
+  contents.on('did-start-navigation', (evt, navUrl) => {
+    if (!navUrl) return;
+    if (isGoogleAuthUrl(navUrl)) {
+      contents.setUserAgent(GOOGLE_AUTH_USER_AGENT);
+    } else {
+      contents.setUserAgent(DESKTOP_USER_AGENT);
+    }
+  });
 
   contents.setWindowOpenHandler(({ url }) => {
     return {

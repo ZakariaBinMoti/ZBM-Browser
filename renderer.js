@@ -337,7 +337,6 @@ function createTab(initialUrl = 'about:blank', activate = true, isIncognito = fa
   }
 
   webview.setAttribute('allowpopups', 'true');
-  webview.setAttribute('useragent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36');
 
   if (window.zbmApi && window.zbmApi.getWebviewPreloadPath) {
     try {
