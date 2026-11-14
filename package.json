@@ -29,10 +29,7 @@
       "releaseType": "release"
     },
     "win": {
-      "target": [
-        "nsis",
-        "portable"
-      ]
+      "target": "nsis"
     },
     "nsis": {
       "oneClick": false,
