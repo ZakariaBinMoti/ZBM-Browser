@@ -25,8 +25,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build & Publish to GitHub Releases
+      - name: Build Electron Packages
+        run: npx electron-builder --win -c.publish.provider=generic -c.publish.url=https://github.com/ZakariaBinMoti/ZBM-Browser/releases/download/${{ github.ref_name }} --publish always
+
+      - name: Publish Single Unified Release to GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.exe
+            dist/*.yml
+            dist/*.blockmap
+          draft: false
+          prerelease: false
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx electron-builder --win --publish always
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
