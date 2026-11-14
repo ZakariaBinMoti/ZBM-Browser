@@ -10,31 +10,49 @@ try {
     } catch (e) {}
   }
 
+  // Helper to handle credential requests without invoking Windows native webauthn
+  function handleWebAuthnGet(origFn, ctx, options) {
+    if (options && (options.publicKey || options.mediation === 'conditional' || options.identity)) {
+      if (options.mediation === 'conditional') {
+        return Promise.resolve(null);
+      }
+      return Promise.reject(new DOMException('Passkeys are not supported in this environment.', 'NotAllowedError'));
+    }
+    return origFn ? origFn.call(ctx, options) : Promise.resolve(null);
+  }
+
+  function handleWebAuthnCreate(origFn, ctx, options) {
+    if (options && (options.publicKey || options.mediation === 'conditional')) {
+      return Promise.reject(new DOMException('Passkeys are not supported in this environment.', 'NotAllowedError'));
+    }
+    return origFn ? origFn.call(ctx, options) : Promise.resolve(null);
+  }
+
+  // Intercept on CredentialsContainer.prototype if available
+  if (typeof CredentialsContainer !== 'undefined' && CredentialsContainer.prototype) {
+    try {
+      const protoGet = CredentialsContainer.prototype.get;
+      const protoCreate = CredentialsContainer.prototype.create;
+      CredentialsContainer.prototype.get = function(options) {
+        return handleWebAuthnGet(protoGet, this, options);
+      };
+      CredentialsContainer.prototype.create = function(options) {
+        return handleWebAuthnCreate(protoCreate, this, options);
+      };
+    } catch (e) {}
+  }
+
+  // Intercept on navigator.credentials instance
   if (navigator.credentials) {
     try {
-      const origGet = navigator.credentials.get ? navigator.credentials.get.bind(navigator.credentials) : null;
-      const origCreate = navigator.credentials.create ? navigator.credentials.create.bind(navigator.credentials) : null;
-
-      if (origGet) {
-        navigator.credentials.get = function(options) {
-          if (options && options.publicKey) {
-            if (options.mediation === 'conditional') {
-              return Promise.resolve(null);
-            }
-            return Promise.reject(new DOMException('WebAuthn is not supported in this environment.', 'NotAllowedError'));
-          }
-          return origGet(options);
-        };
-      }
-
-      if (origCreate) {
-        navigator.credentials.create = function(options) {
-          if (options && options.publicKey) {
-            return Promise.reject(new DOMException('WebAuthn is not supported in this environment.', 'NotAllowedError'));
-          }
-          return origCreate(options);
-        };
-      }
+      const instGet = navigator.credentials.get ? navigator.credentials.get.bind(navigator.credentials) : null;
+      const instCreate = navigator.credentials.create ? navigator.credentials.create.bind(navigator.credentials) : null;
+      navigator.credentials.get = function(options) {
+        return handleWebAuthnGet(instGet, navigator.credentials, options);
+      };
+      navigator.credentials.create = function(options) {
+        return handleWebAuthnCreate(instCreate, navigator.credentials, options);
+      };
     } catch (e) {}
   }
 

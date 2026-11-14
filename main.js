@@ -47,7 +47,7 @@ app.userAgentFallback = DESKTOP_USER_AGENT;
 // Media & Hardware Performance switches
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');
-app.commandLine.appendSwitch('disable-features', 'HardwareMediaKeyHandling,WebAuthentication,WebAuthenticationConditionalUI');
+app.commandLine.appendSwitch('disable-features', 'HardwareMediaKeyHandling,WebAuthentication,WebAuthenticationConditionalUI,WebAuthenticationUseNativeWinApi,WebAuthenticationPasskeyUpgrade,WebAuthenticationEnclaveAuthenticator');
 app.commandLine.appendSwitch('enable-gpu-rasterization');
 app.commandLine.appendSwitch('enable-zero-copy');
 app.commandLine.appendSwitch('ignore-gpu-blocklist');
@@ -134,16 +134,17 @@ function configureSession(targetSession) {
           delete headers[key];
         }
       }
-    } else {
-      headers['User-Agent'] = DESKTOP_USER_AGENT;
-      for (const key of Object.keys(headers)) {
-        if (key.toLowerCase() === 'x-requested-with') {
-          delete headers[key];
-        }
-      }
+      return callback({ cancel: false, requestHeaders: headers });
     }
 
-    callback({ cancel: false, requestHeaders: headers });
+    // Fast-path for standard browsing: only modify if X-Requested-With exists
+    if (headers['X-Requested-With'] || headers['x-requested-with']) {
+      delete headers['X-Requested-With'];
+      delete headers['x-requested-with'];
+      return callback({ cancel: false, requestHeaders: headers });
+    }
+
+    callback({ cancel: false });
   });
 
   // Fast-path AdBlocker: Never block YouTube streams or video chunks (prevents 'Something went wrong')
@@ -254,6 +255,11 @@ function createWindow() {
         backgroundThrottling: false,
         webSecurity: true
       }
+    });
+
+    mainWindow.webContents.on('will-attach-webview', (event, webPreferences, params) => {
+      webPreferences.preload = path.join(__dirname, 'webview-preload.js');
+      webPreferences.contextIsolation = false;
     });
 
     mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
@@ -623,12 +629,11 @@ ipcMain.on('resize-preset', (event, { width, height }) => {
 app.on('web-contents-created', (event, contents) => {
   contents.setUserAgent(DESKTOP_USER_AGENT);
 
-  contents.on('did-start-navigation', (evt, navUrl) => {
-    if (!navUrl) return;
-    if (isGoogleAuthUrl(navUrl)) {
-      contents.setUserAgent(GOOGLE_AUTH_USER_AGENT);
-    } else {
-      contents.setUserAgent(DESKTOP_USER_AGENT);
+  contents.on('did-start-navigation', (event, navUrl, isInPlace, isMainFrame) => {
+    if (!isMainFrame || !navUrl) return;
+    const targetUA = isGoogleAuthUrl(navUrl) ? GOOGLE_AUTH_USER_AGENT : DESKTOP_USER_AGENT;
+    if (contents.getUserAgent() !== targetUA) {
+      contents.setUserAgent(targetUA);
     }
   });
 

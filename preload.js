@@ -1,6 +1,20 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 try {
+  // Suppress Windows Security Passkey / WebAuthn system prompts
+  if (typeof window.PublicKeyCredential !== 'undefined') {
+    try {
+      window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable = () => Promise.resolve(false);
+      window.PublicKeyCredential.isConditionalMediationAvailable = () => Promise.resolve(false);
+    } catch (e) {}
+  }
+  if (typeof CredentialsContainer !== 'undefined' && CredentialsContainer.prototype) {
+    try {
+      CredentialsContainer.prototype.get = () => Promise.resolve(null);
+      CredentialsContainer.prototype.create = () => Promise.reject(new DOMException('Passkeys not supported', 'NotAllowedError'));
+    } catch (e) {}
+  }
+
   const webviewPreloadPath = typeof __dirname !== 'undefined'
     ? (__dirname + '/webview-preload.js').replace(/\\/g, '/')
     : '';
