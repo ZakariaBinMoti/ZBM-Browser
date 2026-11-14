@@ -16,8 +16,8 @@
     "pack": "electron-builder --dir",
     "dist": "electron-builder --win nsis --publish never",
     "dist:portable": "electron-builder --win portable --publish never",
-    "dist:all": "electron-builder --win nsis portable --publish never",
-    "dist:publish": "electron-builder --win nsis portable --publish always"
+    "dist:all": "electron-builder --win --publish never",
+    "dist:publish": "electron-builder --win --publish always"
   },
   "build": {
     "appId": "com.zbm.browser",
