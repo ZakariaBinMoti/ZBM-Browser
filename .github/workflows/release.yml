@@ -25,8 +25,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build & Publish to GitHub Releases
+      - name: Build Electron Packages
+        run: npx electron-builder --win --publish never
+
+      - name: Publish Single Unified Release to GitHub
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx electron-builder --win --publish always
+        run: |
+          gh release delete ${{ github.ref_name }} --yes || true
+          gh release create ${{ github.ref_name }} dist/*.exe dist/*.yml dist/*.blockmap --title "${{ github.ref_name }}" --notes "Release ${{ github.ref_name }}"
 
